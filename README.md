@@ -5,6 +5,8 @@ the answer is kind of, it does play but it's far far off from how a human could 
 
 regardless of the quality of the code it's very amusing to have a tetris game being played in your start page so i've worked to create a whole tetries-themed start page around it
 
+https://github.com/user-attachments/assets/f84fc527-0aba-40b6-9885-3ff939a5fef9
+
 ## customizations
 i have added some variables to quickly change some settings if you like, here they are
 
