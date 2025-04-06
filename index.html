@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Self-Playing Tetris startpage</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='40' viewBox='0 0 60 40'%3E%3Crect x='0' y='0' width='20' height='20' fill='%23FF4444'/%3E%3Crect x='20' y='0' width='20' height='20' fill='%23FF4444'/%3E%3Crect x='20' y='20' width='20' height='20' fill='%23FF4444'/%3E%3Crect x='40' y='20' width='20' height='20' fill='%23FF4444'/%3E%3C/svg%3E">
+  <!-- Added Google Font for a modern look -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap" rel="stylesheet">
+  <style>
+    /* Merged duplicate properties */
+    html, body {
+      overflow: hidden;
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    body {
+      background: #000; /* darker background */
+      font-family: 'Roboto', sans-serif;
+    }
+    .start-page {
+      display: flex;
+      align-items: center;
+    }
+    .side-links {
+      display: grid;
+      grid-template-columns: repeat(2, auto);
+      grid-gap: 10px 20px;
+      /* margin: 0 20px; */
+    }
+    /* Modified: Turn links into buttons */
+    .side-links button {
+      forced-color-adjust: none;
+      /* Updated: fixed size matching the grid */
+      width: 80px;
+      height: 80px;
+      padding: 0;
+      color: #fff;
+      background: #222; /* dark flat look */
+      border: none;
+      text-align: center;
+      cursor: pointer;
+      outline: none;
+      text-decoration: none;
+      display: inline-block;
+      transition: background 0.3s;
+    }
+    .side-links button:hover {
+      background: #444;
+    }
+    .game-canvas {
+      position: relative;
+    }
+    canvas {
+      background-color: #000;
+      /* Remove the classic border and add a neon glow */
+      border: none;
+      /* box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); */
+      display: block;
+      margin: 20px;
+      /* Fixed height (e.g., 600px) so that regardless of the number of vertical cells,
+       the height remains constant. The width adjusts automatically */
+      height: 620px;
+      width: auto;
+    }
+    .bg-tile {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.1; 
+      z-index: -2;
+      background-repeat: repeat;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- New background tile element -->
+  <div class="bg-tile"></div>
+  
+  <div class="start-page">
+    <div class="side-links">
+      <!-- Modified: Left side buttons -->
+      <button type="button"><a href="https://www.youtube.com/feed/subscriptions">Youtube</a></button>
+      <button type="button"><a href="http://www.time.ir/">Time</a></button>
+      <button type="button"><a href="http://192.168.1.1/">192...1</a></button>
+      <button type="button"><a href="https://www.reddit.com/">Reddit</a></button>
+      <button type="button"><a href="https://www.twitch.tv/">Twitch</a></button>
+      <button type="button"><a href="https://www.instagram.com/">Instagram</a></button>
+      <button type="button"><a href="https://odysee.com/">Odysee</a></button>
+      <button type="button"><a href="https://free-images.com/">Free Images</a></button>
+      <button type="button"><a href="https://archive.org/">Archive</a></button>
+      <button type="button"><a href="https://soundcloud.com/discover">Sound Cloud</a></button>
+      <button type="button"><a href="https://it-tools.tech/">IT-tools</a></button>
+      <button type="button"><a href="https://castbox.fm/home">Castbox</a></button>
+      <button type="button"><a href="https://www.loc.gov/">Library</a></button>
+      <button type="button"><a href="https://libgen.gs/#">Library-Gen</a></button>
+    </div>
+    <div class="game-canvas" style="position: relative;">
+      <canvas id="tetris" width="300" height="600"></canvas>
+    </div>
+    <div class="side-links">
+      <!-- Modified: Right side buttons -->
+      <button type="button"><a href="https://duckduckgo.com/?q=DuckDuckGo%20AI%20Chat&ia=chat&duckai=1">DuckAI</a></button>
+      <button type="button"><a href="https://chatgpt.com/">ChatGPT</a></button>
+      <button type="button"><a href="https://gemini.google.com/app">Gemini</a></button>
+      <button type="button"><a href="https://terminaltrove.com/">T-trove</a></button>
+      <button type="button"><a href="https://ollama.com/">Ollama</a></button>
+      <button type="button"><a href="https://www.nerdfonts.com/">Nerd fonts</a></button>
+      <button type="button"><a href="https://distrosea.com/">Distro sea</a></button>
+      <button type="button"><a href="https://ciembor.github.io/4bit/">4bit</a></button>
+      <button type="button"><a href="https://mazznoer.github.io/colorgrad-js/">Gradient</a></button>
+      <button type="button"><a href="https://directory.fsf.org/wiki/Main_Page">Free Soft</a></button>
+      <button type="button"><a href="https://www.portablefreeware.com/">Portable Soft</a></button>
+      <button type="button"><a href="https://ysap.sh/">YSAP</a></button>
+      <button type="button"><a href="https://1337x.to/">1337x</a></button>
+      <button type="button"><a href="https://mega.nz/">Mega</a></button>
+    </div>
+  </div>
+  <script>
+    // Game configurations
+    const COLS = 10;
+    const ROWS = 20;
+    const BLOCK_SIZE = 30;
+    const COLORS = [
+      null,
+      '#66FFCC', // I piece: Light teal
+      '#4488FF', // J piece: Bright blue
+      '#FF8844', // L piece: Orange
+      '#FFDD44', // O piece: Yellow
+      '#66FF66', // S piece: Light green
+      '#CC66FF', // T piece: Purple
+      '#FF4444'  // Z piece: Red
+    ];
+    // Added variable to control game speed
+    // less means faster
+    const GAME_SPEED = 50;
+    // Added variable to control the number of tetromino pieces in the moving background.
+    const BACKGROUND_TETROMINO_COUNT = 28;
+    
+    // Add tetris mode configurations
+    const tetrisModes = {
+      normal: { height: 20, width: 10 },
+      square: { height: 20, width: 20 },
+      tall:   { height: 40, width: 5 },
+      custom: { height: 12, width: 6 },
+    };
+    let currentMode = tetrisModes.normal; // change to tetrisModes.square or tetrisModes.tall as needed
+
+    // Tetromino shapes
+    const TETROMINOES = {
+      'I': [
+        [0, 0, 0, 0],
+        [1, 1, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0]
+      ],
+      'J': [
+        [2, 0, 0],
+        [2, 2, 2],
+        [0, 0, 0]
+      ],
+      'L': [
+        [0, 0, 3],
+        [3, 3, 3],
+        [0, 0, 0]
+      ],
+      'O': [
+        [4, 4],
+        [4, 4]
+      ],
+      'S': [
+        [0, 5, 5],
+        [5, 5, 0],
+        [0, 0, 0]
+      ],
+      'T': [
+        [0, 6, 0],
+        [6, 6, 6],
+        [0, 0, 0]
+      ],
+      'Z': [
+        [7, 7, 0],
+        [0, 7, 7],
+        [0, 0, 0]
+      ]
+    };
+
+    // Create the game arena (grid)
+    function createMatrix(w, h) {
+      const matrix = [];
+      while (h--) {
+        matrix.push(new Array(w).fill(0));
+      }
+      return matrix;
+    }
+
+    // Merge piece into arena
+    function merge(arena, player) {
+      player.matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (value !== 0) {
+            arena[y + player.pos.y][x + player.pos.x] = value;
+          }
+        });
+      });
+    }
+
+    // Check collision
+    function collide(arena, player) {
+      const m = player.matrix;
+      const o = player.pos;
+      for (let y = 0; y < m.length; ++y) {
+        for (let x = 0; x < m[y].length; ++x) {
+          if (m[y][x] !== 0 &&
+              (arena[y + o.y] &&
+              arena[y + o.y][x + o.x]) !== 0) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    // Clear full rows
+    function arenaSweep() {
+      for (let y = arena.length - 1; y >= 0; --y) {
+        if (arena[y].every(value => value !== 0)) {
+          const row = arena.splice(y, 1)[0].fill(0);
+          arena.unshift(row);
+          ++y;
+        }
+      }
+    }
+
+    // Rotate the matrix
+    function rotate(matrix, dir) {
+      for (let y = 0; y < matrix.length; ++y) {
+        for (let x = 0; x < y; ++x) {
+          [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
+        }
+      }
+      if (dir > 0) {
+        matrix.forEach(row => row.reverse());
+      } else {
+        matrix.reverse();
+      }
+    }
+
+    // Draw everything
+    const canvas = document.getElementById('tetris');
+    const context = canvas.getContext('2d');
+
+    // Update canvas dimensions based on currentMode settings
+    canvas.width = currentMode.width * BLOCK_SIZE;
+    canvas.height = currentMode.height * BLOCK_SIZE;
+
+    function drawMatrix(matrix, offset) {
+      matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (value !== 0) {
+            context.fillStyle = COLORS[value];
+            context.fillRect((x + offset.x) * BLOCK_SIZE, (y + offset.y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            context.strokeStyle = '#111';
+            context.strokeRect((x + offset.x) * BLOCK_SIZE, (y + offset.y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+          }
+        });
+      });
+    }
+
+    function draw() {
+      context.fillStyle = '#111';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      drawMatrix(arena, {x: 0, y: 0});
+      drawMatrix(player.matrix, player.pos);
+    }
+
+    // Create a random piece (tetromino)
+    function createPiece(type) {
+      return TETROMINOES[type];
+    }
+
+    // Set up the player object
+    const player = {
+      pos: {x: 0, y: 0},
+      matrix: null
+    };
+
+    let lastPieceType = null;
+    let gameOver = false;
+
+    // Modified playerReset: if collision, mark game over, leave block at top, then restart after 1 sec.
+    function playerReset() {
+      const pieces = 'TJLOSZI';
+      const availablePieces = lastPieceType ? pieces.split('').filter(p => p !== lastPieceType) : pieces.split('');
+      const type = availablePieces[Math.floor(Math.random() * availablePieces.length)];
+      lastPieceType = type;
+      player.matrix = createPiece(type);
+      player.pos.y = 0;
+      player.pos.x = ((arena[0].length / 2) | 0) - ((player.matrix[0].length / 2) | 0);
+      if (collide(arena, player)) {
+        // Game Over: leave last block at top and restart after 1 second.
+        gameOver = true;
+        setTimeout(() => {
+          arena.forEach(row => row.fill(0));
+          gameOver = false;
+          playerReset();
+        }, 1000);
+      }
+    }
+
+    // Drop piece
+    function playerDrop() {
+      player.pos.y++;
+      if (collide(arena, player)) {
+        player.pos.y--;
+        merge(arena, player);
+        arenaSweep();
+        playerReset();
+      }
+      dropCounter = 0;
+    }
+
+    // New helper: clone a matrix
+    function cloneMatrix(matrix) {
+        return matrix.map(row => row.slice());
+    }
+
+    // New helper: simulate dropping a piece at a given x position with its current rotation
+    function simulateDrop(arena, piece, pos) {
+        let simPos = { x: pos.x, y: pos.y };
+        while (!collide(arena, { matrix: piece, pos: simPos })) {
+            simPos.y++;
+        }
+        simPos.y--; // step back to last valid pos
+        // Build simulation arena
+        const simArena = cloneMatrix(arena);
+        piece.forEach((row, y) => {
+          row.forEach((value, x) => {
+            if (value !== 0) {
+              simArena[simPos.y + y][simPos.x + x] = value;
+            }
+          });
+        });
+        return { simPos, simArena };
+    }
+
+    // Modified evaluateArena to prioritize filling empty spaces over stacking shapes.
+    function evaluateArena(arena) {
+        const fullLines = arena.filter(row => row.every(v => v !== 0)).length;
+        let aggregateHeight = 0;
+        let holes = 0;
+        for (let x = 0; x < arena[0].length; x++) {
+            let columnHasBlock = false;
+            let colHeight = 0;
+            for (let y = 0; y < arena.length; y++) {
+                if (arena[y][x] !== 0) {
+                    if (!columnHasBlock) {
+                        columnHasBlock = true;
+                        colHeight = arena.length - y;
+                    }
+                } else if (columnHasBlock) {
+                    holes++;
+                }
+            }
+            aggregateHeight += colHeight;
+        }
+        return fullLines * 100 - aggregateHeight * 4 - holes * 25;
+    }
+
+    // Modified aiMove function: evaluate all rotations/positions and choose the best move.
+    function aiMove() {
+        let bestScore = -Infinity;
+        let bestX = player.pos.x;
+        let bestRotation = 0;
+        const originalMatrix = cloneMatrix(player.matrix);
+        // Try each possible rotation (0, 1, 2, 3 times)
+        for (let rot = 0; rot < 4; rot++) {
+            let rotated = cloneMatrix(originalMatrix);
+            for (let i = 0; i < rot; i++) {
+                rotate(rotated, 1);
+            }
+            const pieceWidth = rotated[0].length;
+            // Loop through plausible x positions 
+            for (let x = -pieceWidth; x < arena[0].length; x++) {
+                const testPos = { x: x, y: player.pos.y };
+                if (collide(arena, { matrix: rotated, pos: testPos })) continue;
+                const { simArena } = simulateDrop(arena, rotated, testPos);
+                const score = evaluateArena(simArena);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestX = x;
+                    bestRotation = rot;
+                }
+            }
+        }
+        // Apply the rotation moves.
+        for (let i = 0; i < bestRotation; i++) {
+            rotate(player.matrix, 1);
+            if (collide(arena, player)) { rotate(player.matrix, -1); }
+        }
+        // Move piece one step toward the best x position.
+        if (player.pos.x < bestX) {
+            player.pos.x++;
+            if (collide(arena, player)) { player.pos.x--; }
+        } else if (player.pos.x > bestX) {
+            player.pos.x--;
+            if (collide(arena, player)) { player.pos.x++; }
+        }
+    }
+
+    let dropCounter = 0;
+    let dropInterval = GAME_SPEED;
+
+    let lastTime = 0;
+    const arena = createMatrix(currentMode.width, currentMode.height);
+
+    // Modified update: pause game progression when game over.
+    function update(time = 0) {
+      if (gameOver) {
+        draw();
+        requestAnimationFrame(update);
+        return;
+      }
+      const deltaTime = time - lastTime;
+      lastTime = time;
+      dropCounter += deltaTime;
+      if (dropCounter > dropInterval) {
+        aiMove();
+        playerDrop();
+        // Fixed: maintain constant game speed using GAME_SPEED
+        dropInterval = GAME_SPEED;
+      }
+      draw();
+      requestAnimationFrame(update);
+    }
+    playerReset();
+    update();
+
+
+    // Added: assign each side-link button a random Tetris color
+    const tetrisColors = ['#66FFCC', '#4488FF', '#FF8844', '#FFDD44', '#66FF66', '#CC66FF', '#FF4444'];
+    document.querySelectorAll('.side-links a').forEach(btn => {
+        const randomColor = tetrisColors[Math.floor(Math.random() * tetrisColors.length)];
+        btn.style.background = randomColor;
+    });
+    // Removed: old tetromino clipPath logic
+    // Updated: assign each button a square 4x4 grid with a randomly oriented tetromino shape and link name on top
+
+    // Helper: rotate a matrix 90° clockwise 'times' times
+    function rotateShape(matrix, times) {
+        let result = matrix;
+        for (let i = 0; i < times; i++) {
+            const rows = result.length, cols = result[0].length;
+            let rotated = Array.from({length: cols}, () => Array(rows).fill(0));
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    rotated[x][rows - 1 - y] = result[y][x];
+                }
+            }
+            result = rotated;
+        }
+        return result;
+    }
+
+    // Added: define rotation angles for tetromino grid rotation
+    const ROTATION_ANGLES = [90, 180, 270, 360];
+
+    document.querySelectorAll('.side-links button').forEach(btn => {
+        const anchor = btn.querySelector('a');
+        let linkText = '';
+        if (anchor) {
+            // Use the existing anchor and style it for clickability.
+            linkText = anchor.textContent;
+            anchor.style.position = 'absolute';
+            anchor.style.top = '50%';
+            anchor.style.left = '50%';
+            anchor.style.transform = 'translate(-50%, -50%)';
+            anchor.style.zIndex = '2';
+            anchor.style.color = '#fff';
+            anchor.style.fontWeight = 'bold';
+            anchor.style.backgroundColor = 'rgba(0, 0, 0, 0.25)';
+            anchor.style.padding = '1px';
+        } else {
+            linkText = btn.textContent;
+            btn.textContent = '';
+            const span = document.createElement('span');
+            span.textContent = linkText;
+            span.style.position = 'absolute';
+            span.style.top = '50%';
+            span.style.left = '50%';
+            span.style.transform = 'translate(-50%, -50%)';
+            span.style.zIndex = '2';
+            span.style.color = '#fff';
+            span.style.fontWeight = 'bold';
+            span.style.backgroundColor = 'rgba(0, 0, 0, 0.25)';
+            span.style.padding = '1px';
+            btn.appendChild(span);
+        }
+
+        // Ensure button is set for absolute positioning of children
+        btn.style.position = 'relative';
+
+        // Create grid container that fills the entire button
+        const gridContainer = document.createElement('div');
+        gridContainer.className = 'tetromino-grid';
+        gridContainer.style.position = 'absolute';
+        gridContainer.style.top = '0';
+        gridContainer.style.left = '0';
+        gridContainer.style.width = '100%';
+        gridContainer.style.height = '100%';
+        gridContainer.style.display = 'grid';
+        gridContainer.style.gridTemplateColumns = 'repeat(4, 1fr)';
+        gridContainer.style.gridTemplateRows = 'repeat(4, 1fr)';
+        gridContainer.style.zIndex = '1';
+
+        // Pick a random tetromino shape and apply a random rotation
+        const tetrominoKeys = Object.keys(TETROMINOES);
+        const randomKey = tetrominoKeys[Math.floor(Math.random() * tetrominoKeys.length)];
+        let shape = TETROMINOES[randomKey];
+        const randomRotations = Math.floor(Math.random() * 4); // 0 to 3 rotations
+        shape = rotateShape(shape, randomRotations);
+        const shapeRows = shape.length;
+        const shapeCols = shape[0].length;
+
+        // Determine tetromino's color
+        let tetColor = '';
+        outer: for (let y = 0; y < shape.length; y++) {
+            for (let x = 0; x < shape[y].length; x++) {
+                if (shape[y][x] !== 0) {
+                    tetColor = COLORS[shape[y][x]];
+                    break outer;
+                }
+            }
+        }
+
+        // Compute random offset so the shape fits in the grid
+        const maxOffsetRow = 4 - shapeRows;
+        const maxOffsetCol = 4 - shapeCols;
+        const offsetRow = Math.floor(Math.random() * (maxOffsetRow + 1));
+        const offsetCol = Math.floor(Math.random() * (maxOffsetCol + 1));
+
+        // Create a 4x4 grid (initially false)
+        const grid = Array.from({length: 4}, () => Array(4).fill(false));
+        for (let y = 0; y < shapeRows; y++) {
+            for (let x = 0; x < shapeCols; x++) {
+                if (shape[y][x] !== 0) {
+                    grid[offsetRow + y][offsetCol + x] = true;
+                }
+            }
+        }
+
+        // Build grid cells
+        grid.forEach(row => {
+            row.forEach(cell => {
+                const cellDiv = document.createElement('div');
+                cellDiv.style.border = '1px solid rgba(255,255,255,0.1)';
+                cellDiv.style.boxSizing = 'border-box';
+                if (cell) {
+                    cellDiv.style.background = tetColor;
+                }
+                gridContainer.appendChild(cellDiv);
+            });
+        });
+        btn.appendChild(gridContainer);
+
+        // Changed: rotate the tetromino grid randomly every 2 seconds using only 90, 180, or 270 degrees
+        setInterval(() => {
+            const randomAngle = ROTATION_ANGLES[Math.floor(Math.random() * ROTATION_ANGLES.length)];
+            gridContainer.style.transform = `rotate(${randomAngle}deg)`;
+        }, 2000);
+    });
+
+    // Modified: Create background tile pattern with variable tetromino count
+    function createTilePattern() {
+      const cellSize = 40; // updated from 20 to 40 for larger cells
+      const cols = 7;
+      const rows = Math.ceil(BACKGROUND_TETROMINO_COUNT / cols);
+      const canvasTile = document.createElement('canvas');
+      canvasTile.width = cols * cellSize;
+      canvasTile.height = rows * cellSize;
+      const ctx = canvasTile.getContext('2d');
+      ctx.clearRect(0, 0, canvasTile.width, canvasTile.height);
+      
+      // Helper: rotate a matrix clockwise one time
+      function rotateMatrix(matrix) {
+        return matrix[0].map((_, i) => matrix.map(row => row[i]).reverse());
+      }
+      
+      let index = 0;
+      const tetrominoKeys = Object.keys(TETROMINOES);
+      // New loop: Fill grid with random tetromino shapes with random rotations.
+      while(index < cols * rows) {
+          const col = index % cols;
+          const row = Math.floor(index / cols);
+          const posX = col * cellSize;
+          const posY = row * cellSize;
+          
+          // Pick a random tetromino and apply a random rotation (0, 90, 180, or 270 degrees)
+          const randomKey = tetrominoKeys[Math.floor(Math.random() * tetrominoKeys.length)];
+          let piece = JSON.parse(JSON.stringify(TETROMINOES[randomKey])); // deep copy
+          const randomRotations = Math.floor(Math.random() * 4);
+          for(let r = 0; r < randomRotations; r++) {
+              piece = rotateMatrix(piece);
+          }
+          
+          const pieceRows = piece.length, pieceCols = piece[0].length;
+          const tetColor = COLORS[piece.flat().find(v => v !== 0)];
+          const blockSize = 8; // updated from 4 to 8 for twice as big shapes
+          const drawWidth = pieceCols * blockSize;
+          const drawHeight = pieceRows * blockSize;
+          // Randomize offset within the cell so tetromino position varies
+          const offsetX = posX + Math.random() * (cellSize - drawWidth);
+          const offsetY = posY + Math.random() * (cellSize - drawHeight);
+          
+          for (let y = 0; y < pieceRows; y++) {
+              for (let x = 0; x < pieceCols; x++) {
+                  if (piece[y][x] !== 0) {
+                      ctx.fillStyle = tetColor;
+                      ctx.fillRect(offsetX + x * blockSize, offsetY + y * blockSize, blockSize, blockSize);
+                  }
+              }
+          }
+          index++;
+      }
+      document.querySelector('.bg-tile').style.backgroundImage = 'url(' + canvasTile.toDataURL() + ')';
+    }
+    createTilePattern();
+
+    // Modified: Animate background tile movement in one random direction per page load
+    (function animateBgTile() {
+        const bgTile = document.querySelector('.bg-tile');
+        let posX = 0, posY = 0;
+        // Choose a random direction on page load
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 0.5; // Adjusts movement speed (medium speed)
+        const dx = Math.cos(angle) * speed;
+        const dy = Math.sin(angle) * speed;
+        
+        function updatePosition() {
+            posX += dx;
+            posY += dy;
+            bgTile.style.backgroundPosition = posX + "px " + posY + "px";
+            requestAnimationFrame(updatePosition);
+        }
+        updatePosition();
+    })();
+  </script>
+</body>
+</html>
